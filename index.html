@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To-Do List</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+        }
+        .todo-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .todo-item.completed {
+            background-color: #d4edda;
+            text-decoration: line-through;
+        }
+        .button-group button {
+            margin-left: 5px;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .button-group button.complete {
+            background-color: #28a745;
+            color: white;
+        }
+        .button-group button.restart {
+            background-color: #ffc107;
+            color: white;
+        }
+        .button-group button.move-up,
+        .button-group button.move-down {
+            background-color: #007bff;
+            color: white;
+        }
+        .button-group button.edit {
+            background-color: #17a2b8;
+            color: white;
+        }
+        .button-group button.remove {
+            background-color: #dc3545;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>To-Do List</h1>
+        <input type="text" id="todo-input" placeholder="Enter a task...">
+        <textarea id="todo-desc" rows="3" placeholder="Enter task description..."></textarea>
+        <input type="date" id="todo-date">
+        <button id="add-task">Add Task</button>
+
+        <div id="todo-list"></div>
+
+        <h2>Summary</h2>
+        <table border="1" id="summary-table" style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr>
+                    <th>Task</th>
+                    <th>Description</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <script>
+        let todoList = JSON.parse(localStorage.getItem('todoList')) || [];
+
+        function saveToLocalStorage() {
+            localStorage.setItem('todoList', JSON.stringify(todoList));
+        }
+
+        function renderList() {
+            const todoDiv = $('#todo-list');
+            const summaryTable = $('#summary-table tbody');
+
+            todoDiv.empty();
+            summaryTable.empty();
+
+            todoList.forEach((item, index) => {
+                const todoItem = $(
+                    `<div class="todo-item ${item.completed ? 'completed' : ''}" data-index="${index}">
+                        <span>${item.task} (${item.date})</span>
+                        <div class="button-group">
+                            <button class="complete">Complete</button>
+                            <button class="restart" ${item.completed ? '' : 'disabled'}>Restart</button>
+                            <button class="move-up">Move Up</button>
+                            <button class="move-down">Move Down</button>
+                            <button class="edit">Edit</button>
+                            <button class="remove">Remove</button>
+                        </div>
+                    </div>`
+                );
+
+                todoItem.find('.complete').on('click', function () {
+                    item.completed = true;
+                    saveToLocalStorage();
+                    renderList();
+                });
+
+                todoItem.find('.restart').on('click', function () {
+                    item.completed = false;
+                    saveToLocalStorage();
+                    renderList();
+                });
+
+                todoItem.find('.move-up').on('click', function () {
+                    if (index > 0) {
+                        const temp = todoList[index - 1];
+                        todoList[index - 1] = todoList[index];
+                        todoList[index] = temp;
+                        saveToLocalStorage();
+                        renderList();
+                    }
+                });
+
+                todoItem.find('.move-down').on('click', function () {
+                    if (index < todoList.length - 1) {
+                        const temp = todoList[index + 1];
+                        todoList[index + 1] = todoList[index];
+                        todoList[index] = temp;
+                        saveToLocalStorage();
+                        renderList();
+                    }
+                });
+
+                todoItem.find('.edit').on('click', function () {
+                    const newDescription = prompt('Edit the description:', item.description);
+                    if (newDescription !== null) {
+                        item.description = newDescription;
+                        saveToLocalStorage();
+                        renderList();
+                    }
+                });
+
+                todoItem.find('.remove').on('click', function () {
+                    todoList.splice(index, 1);
+                    saveToLocalStorage();
+                    renderList();
+                });
+
+                todoDiv.append(todoItem);
+
+                const summaryRow = $(
+                    `<tr>
+                        <td>${item.task}</td>
+                        <td>${item.description}</td>
+                        <td>${item.date}</td>
+                        <td>${item.completed ? 'Completed' : 'Pending'}</td>
+                        <td>
+                            <button class="edit-summary">Edit</button>
+                            <button class="remove-summary">Remove</button>
+                        </td>
+                    </tr>`
+                );
+
+                summaryRow.find('.edit-summary').on('click', function () {
+                    const newDescription = prompt('Edit the description:', item.description);
+                    if (newDescription !== null) {
+                        item.description = newDescription;
+                        saveToLocalStorage();
+                        renderList();
+                    }
+                });
+
+                summaryRow.find('.remove-summary').on('click', function () {
+                    todoList.splice(index, 1);
+                    saveToLocalStorage();
+                    renderList();
+                });
+
+                summaryTable.append(summaryRow);
+            });
+        }
+
+        $('#add-task').on('click', function () {
+            const task = $('#todo-input').val().trim();
+            const description = $('#todo-desc').val().trim();
+            const date = $('#todo-date').val();
+
+            if (task === '' || date === '') {
+                alert('Please enter a task and select a date.');
+                return;
+            }
+
+            todoList.push({
+                task: task,
+                description: description,
+                date: date,
+                completed: false
+            });
+
+            $('#todo-input').val('');
+            $('#todo-desc').val('');
+            $('#todo-date').val('');
+            saveToLocalStorage();
+            renderList();
+        });
+
+        renderList();
+    </script>
+</body>
+</html>
